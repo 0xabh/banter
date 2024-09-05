@@ -57,4 +57,33 @@ contract PlayerTokenAMM {
 
         emit PoolCreated(_playerToken);
     }
+    function buyPlayerToken(address _playerToken, address _buyer)
+        external
+        onlyOwner
+    {
+        Pool storage pool = pools[_playerToken];
+        require(pool.baseTokenReserve > 0, "Pool does not exist");
+
+        uint256 currentPrice = getCurrentPlayerPrice(_playerToken);
+        require(
+            baseToken.balanceOf(msg.sender) >= currentPrice,
+            "Insufficient base tokens to buy Player token."
+        );
+
+        baseToken.safeTransferFrom(msg.sender, address(this), currentPrice);
+        IERC20(_playerToken).safeTransfer(_buyer, 1e18);
+
+        pool.baseTokenReserve += currentPrice;
+        pool.playerTokenReserve -= 1e18;
+    }
+
+    function getCurrentPlayerPrice(address _playerToken)
+        public
+        view
+        returns (uint256)
+    {
+        Pool storage pool = pools[_playerToken];
+        require(pool.baseTokenReserve > 0, "Pool does not exist");
+        return (pool.baseTokenReserve * 1e18) / pool.playerTokenReserve;
+    }
 }

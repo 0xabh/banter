@@ -73,10 +73,24 @@ contract BanterFantasySports {
         address[] playyerTokens,
         uint256 leagueId
     );
+    event PlayerBought(
+        address indexed player,
+        address owner,
+        uint256 buyPrice,
+        uint256 leagueId
+    );
 
 
     modifier onlyOwner{
         require(owner==msg.sender,"you are not the owner");
+        _;
+    }
+
+    modifier isTeamOwned(uint256 _leagueId) {
+        require(
+            leagueTeams[_leagueId][msg.sender].playerAddress.length != 0,
+            "You didn't own a team"
+        );
         _;
     }
 
@@ -181,6 +195,35 @@ contract BanterFantasySports {
         leagueTeams[_leagueId][msg.sender].totalValue = totalValue;
 
         emit TeamCreated(msg.sender, _playerTokens, _leagueId);
+    }
+
+    function buyPLayer(address _buyPlayerToken, uint256 _leagueId)
+        external
+        isTeamOwned(_leagueId)
+    {
+        require(
+            leagueTeams[_leagueId][msg.sender].players[_buyPlayerToken] == 0,
+            "You already own this player"
+        );
+        uint256 currentPrice = playerTokenAMM.getCurrentPlayerPrice(
+            _buyPlayerToken
+        );
+        require(
+            chzToken.allowance(msg.sender, address(this)) >= currentPrice,
+            "Pay actual price of player"
+        );
+        chzToken.transfer(address(this), currentPrice);
+        uint256 totalValue = leagueTeams[_leagueId][msg.sender].totalValue;
+        totalValue += currentPrice;
+        leagueTeams[_leagueId][msg.sender].totalValue = totalValue;
+        chzToken.approve(address(playerTokenAMM), currentPrice);
+        playerTokenAMM.buyPlayerToken(_buyPlayerToken, msg.sender);
+        leagueTeams[_leagueId][msg.sender].playerAddress.push(_buyPlayerToken);
+
+        leagueTeams[_leagueId][msg.sender].players[
+            _buyPlayerToken
+        ] = currentPrice;
+        emit PlayerBought(_buyPlayerToken, msg.sender, currentPrice, _leagueId);
     }
      function getTotalPrice(address[] memory _playerTokens)
         internal
