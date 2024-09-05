@@ -46,9 +46,15 @@ contract BanterFantasySports {
         bool resolved;
         bool outcome;
     }
+    struct UserTeam {
+        mapping(address => uint256) players;
+        address[] playerAddress;
+        uint256 totalValue;
+    }
 
     mapping(address => Player) public players;
     mapping(uint256 => League) public leagues;
+    mapping(uint256 => mapping(address => UserTeam)) public leagueTeams;
 
     event PlayerAdded(
         address indexed tokenAddress,
@@ -62,7 +68,11 @@ contract BanterFantasySports {
         string description,
         uint256 resolveTime
     );
-
+    event TeamCreated(
+        address indexed user,
+        address[] playyerTokens,
+        uint256 leagueId
+    );
 
 
     modifier onlyOwner{
@@ -122,6 +132,67 @@ contract BanterFantasySports {
         newLeague.resolveTime = _resolveTime;
         emit LeagueCreated(nextleagueId, _description, _resolveTime);
         nextleagueId++;
+    }
+
+    function createTeam(address[] memory _playerTokens, uint256 _leagueId)
+        external
+    {
+        require(
+            _playerTokens.length <= 11,
+            "Can't select more than 11 players"
+        );
+        require(
+            _leagueId <= nextleagueId && _leagueId != 0,
+            "League doesn't exist"
+        );
+        require(
+            leagueTeams[_leagueId][msg.sender].playerAddress.length == 0,
+            "You already own a team"
+        );
+
+        uint256 totalPrice = getTotalPrice(_playerTokens);
+        require(
+            chzToken.allowance(msg.sender, address(this)) >= totalPrice,
+            "Stake CHZ first"
+        );
+        uint256 totalValue = 0;
+
+        for (uint256 i = 0; i < _playerTokens.length; i++) {
+            address playerTokenAddress = _playerTokens[i];
+            require(players[playerTokenAddress].price > 0, "Invalid player");
+            require(
+                leagueTeams[_leagueId][msg.sender].players[
+                    playerTokenAddress
+                ] == 0,
+                "Already owned"
+            );
+            leagueTeams[_leagueId][msg.sender].players[
+                playerTokenAddress
+            ] = players[playerTokenAddress].price;
+            leagueTeams[_leagueId][msg.sender].playerAddress.push(
+                playerTokenAddress
+            );
+            IERC20 playerToken = IERC20(playerTokenAddress);
+            playerToken.transfer(msg.sender, 1e18);
+            totalValue += players[playerTokenAddress].price;
+        }
+
+        chzToken.transferFrom(msg.sender, address(this), totalPrice);
+        leagueTeams[_leagueId][msg.sender].totalValue = totalValue;
+
+        emit TeamCreated(msg.sender, _playerTokens, _leagueId);
+    }
+     function getTotalPrice(address[] memory _playerTokens)
+        internal
+        view
+        returns (uint256)
+    {
+        uint256 totalValue = 0;
+        for (uint256 i = 0; i < _playerTokens.length; i++) {
+            require(players[_playerTokens[i]].price > 0, "Invalid player");
+            totalValue += players[_playerTokens[i]].price;
+        }
+        return totalValue;
     }
     
 }
