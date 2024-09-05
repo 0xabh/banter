@@ -29,10 +29,11 @@ contract PlayerTokenAMM {
         owner = _owner;
     }
 
-    function createPool(address _playerToken, uint256 _initialLiquidity, uint256 _price)
-        external
-        onlyOwner
-    {
+    function createPool(
+        address _playerToken,
+        uint256 _initialLiquidity,
+        uint256 _price
+    ) external onlyOwner {
         require(
             pools[_playerToken].baseTokenReserve == 0,
             "Pool already exists"
@@ -40,7 +41,7 @@ contract PlayerTokenAMM {
 
         IERC20 playerToken = IERC20(_playerToken);
 
-        uint256 baseTokenAmount = _price* _initialLiquidity;
+        uint256 baseTokenAmount = _price * _initialLiquidity;
         uint256 playerTokenAmount = _initialLiquidity;
 
         baseToken.safeTransferFrom(msg.sender, address(this), baseTokenAmount);
@@ -58,10 +59,7 @@ contract PlayerTokenAMM {
         emit PoolCreated(_playerToken);
     }
 
-    function buyPlayerToken(address _playerToken)
-        external
-        onlyOwner
-    {
+    function buyPlayerToken(address _playerToken) external onlyOwner {
         Pool storage pool = pools[_playerToken];
         require(pool.baseTokenReserve > 0, "Pool does not exist");
 
@@ -78,10 +76,10 @@ contract PlayerTokenAMM {
         pool.playerTokenReserve -= 1e18;
     }
 
-    function sellPlayerToken(address _playerToken, uint256 price)
-        external
-        onlyOwner
-    {
+    function sellPlayerToken(
+        address _playerToken,
+        uint256 price
+    ) external onlyOwner {
         Pool storage pool = pools[_playerToken];
         require(pool.baseTokenReserve > 0, "Pool does not exist");
 
@@ -92,11 +90,9 @@ contract PlayerTokenAMM {
         pool.baseTokenReserve -= price;
     }
 
-    function getCurrentPlayerPrice(address _playerToken)
-        public
-        view
-        returns (uint256)
-    {
+    function getCurrentPlayerPrice(
+        address _playerToken
+    ) public view returns (uint256) {
         Pool storage pool = pools[_playerToken];
         require(pool.baseTokenReserve > 0, "Pool does not exist");
         return (pool.baseTokenReserve * 1e18) / pool.playerTokenReserve;

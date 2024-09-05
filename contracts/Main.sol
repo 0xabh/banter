@@ -17,14 +17,15 @@ contract PlayerToken is ERC20 {
     ) ERC20(name, symbol) {
         position = _position;
         team = _team;
-        owner=msg.sender;
+        owner = msg.sender;
     }
 
-    modifier onlyOwner{
-        require(owner==msg.sender,"you are not the owner");
+    modifier onlyOwner() {
+        require(owner == msg.sender, "you are not the owner");
         _;
     }
-    function mint(address to, uint256 amount) external onlyOwner{
+
+    function mint(address to, uint256 amount) external onlyOwner {
         _mint(to, amount * 1e18);
     }
 }
@@ -33,7 +34,7 @@ contract BanterFantasySports {
     address public owner;
     PlayerTokenAMM public playerTokenAMM;
     IERC20 public baseToken;
-    uint256 nextleagueId=1;
+    uint256 nextleagueId = 1;
     uint256 public virtualBalance = 10 * 1e18;
     struct Player {
         PlayerToken token;
@@ -56,6 +57,7 @@ contract BanterFantasySports {
     mapping(address => Player) public players;
     mapping(uint256 => League) public leagues;
     mapping(uint256 => mapping(address => UserTeam)) public leagueTeams;
+    mapping(uint256 => address[]) leagueUsers;
 
     event PlayerAdded(
         address indexed tokenAddress,
@@ -87,9 +89,8 @@ contract BanterFantasySports {
         uint256 leagueId
     );
 
-
-    modifier onlyOwner{
-        require(owner==msg.sender,"you are not the owner");
+    modifier onlyOwner() {
+        require(owner == msg.sender, "you are not the owner");
         _;
     }
 
@@ -131,9 +132,13 @@ contract BanterFantasySports {
             _price * 1e18
         );
         newPlayerToken.mint(address(this), _initialSupply);
-        baseToken.approve(address(playerTokenAMM), _price *_poolSupply * 1e18);
+        baseToken.approve(address(playerTokenAMM), _price * _poolSupply * 1e18);
         newPlayerToken.approve(address(playerTokenAMM), _poolSupply * 1e18);
-        playerTokenAMM.createPool(address(newPlayerToken), _poolSupply * 1e18, _price);
+        playerTokenAMM.createPool(
+            address(newPlayerToken),
+            _poolSupply * 1e18,
+            _price
+        );
         emit PlayerAdded(
             address(newPlayerToken),
             _name,
@@ -143,22 +148,10 @@ contract BanterFantasySports {
         );
     }
 
-    function createLeagues(string memory _description, uint256 _resolveTime)
-        external
-        onlyOwner
-    {
-        require(_resolveTime > block.timestamp, "Invalid resolve time");
-        League storage newLeague = leagues[nextleagueId];
-        newLeague.description = _description;
-        newLeague.resolveTime = _resolveTime;
-        emit LeagueCreated(nextleagueId, _description, _resolveTime);
-        nextleagueId++;
-    }
-
-    function createTeam(address[] memory _playerTokens, uint256 _leagueId)
-        external
-        payable
-    {
+    function createTeam(
+        address[] memory _playerTokens,
+        uint256 _leagueId
+    ) external payable {
         require(
             _playerTokens.length <= 11,
             "Can't select more than 11 players"
@@ -174,6 +167,7 @@ contract BanterFantasySports {
         require(msg.value == 10 * 1e18, "Stake chz to create team");
         leagues[_leagueId].userStakes[msg.sender] = 10 * 1e18;
         leagues[_leagueId].totalStakes += 10 * 1e18;
+        leagueUsers[_leagueId].push(msg.sender);
         uint256 totalPrice = getTotalPrice(_playerTokens);
         require(
             totalPrice <= virtualBalance,
@@ -203,11 +197,10 @@ contract BanterFantasySports {
         emit TeamCreated(msg.sender, _playerTokens, _leagueId);
     }
 
-    function buyPLayer(address _buyPlayerToken, uint256 _leagueId)
-        external
-        payable
-        isTeamOwned(_leagueId)
-    {
+    function buyPLayer(
+        address _buyPlayerToken,
+        uint256 _leagueId
+    ) external payable isTeamOwned(_leagueId) {
         require(
             leagueTeams[_leagueId][msg.sender].players[_buyPlayerToken] == 0,
             "You already own this player"
@@ -232,18 +225,19 @@ contract BanterFantasySports {
         emit PlayerBought(_buyPlayerToken, msg.sender, currentPrice, _leagueId);
     }
 
-    function sellPLayer(address _sellPlayerToken, uint256 _leagueId)
-        external
-        isTeamOwned(_leagueId)
-    {
+    function sellPLayer(
+        address _sellPlayerToken,
+        uint256 _leagueId
+    ) external payable isTeamOwned(_leagueId) {
         require(
             leagueTeams[_leagueId][msg.sender].players[_sellPlayerToken] != 0,
             "You don't own this player"
         );
+        require(msg.value == 5 * 1e16, "Give the fees for transfering");
         uint256 currentPrice = playerTokenAMM.getCurrentPlayerPrice(
             _sellPlayerToken
         );
-        uint256 price = adjustPrice(
+        uint256 price = abs(
             currentPrice,
             leagueTeams[_leagueId][msg.sender].players[_sellPlayerToken]
         );
@@ -261,11 +255,21 @@ contract BanterFantasySports {
         emit PlayerSold(_sellPlayerToken, msg.sender, price, _leagueId);
     }
 
-    function getTotalPrice(address[] memory _playerTokens)
-        internal
-        view
-        returns (uint256)
-    {
+    function createLeagues(
+        string memory _description,
+        uint256 _resolveTime
+    ) external onlyOwner {
+        require(_resolveTime > block.timestamp, "Invalid resolve time");
+        League storage newLeague = leagues[nextleagueId];
+        newLeague.description = _description;
+        newLeague.resolveTime = _resolveTime;
+        emit LeagueCreated(nextleagueId, _description, _resolveTime);
+        nextleagueId++;
+    }
+
+    function getTotalPrice(
+        address[] memory _playerTokens
+    ) internal view returns (uint256) {
         uint256 totalValue = 0;
         for (uint256 i = 0; i < _playerTokens.length; i++) {
             require(players[_playerTokens[i]].price > 0, "Invalid player");
@@ -274,11 +278,10 @@ contract BanterFantasySports {
         return totalValue;
     }
 
-    function adjustPrice(uint256 currentPrice, uint256 previousPrice)
-        public
-        pure
-        returns (uint256)
-    {
+    function abs(
+        uint256 currentPrice,
+        uint256 previousPrice
+    ) internal pure returns (uint256) {
         if (currentPrice > previousPrice) {
             uint256 increase = currentPrice - previousPrice;
             uint256 adjustedPrice = previousPrice + (increase / 2);
@@ -288,9 +291,10 @@ contract BanterFantasySports {
         }
     }
 
-    function _removePlayerAddress(UserTeam storage team, address playerAddress)
-        internal
-    {
+    function _removePlayerAddress(
+        UserTeam storage team,
+        address playerAddress
+    ) internal {
         uint256 length = team.playerAddress.length;
         for (uint256 i = 0; i < length; i++) {
             if (team.playerAddress[i] == playerAddress) {
@@ -300,5 +304,4 @@ contract BanterFantasySports {
             }
         }
     }
-    
 }
