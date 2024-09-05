@@ -335,4 +335,34 @@ contract BanterFantasySports is ReentrancyGuard {
         require(success == true, "transfer failed");
         league.resolved = true;
     }
+
+    function getTotalValue(uint256 _leagueId) public view returns (uint256) {
+        return leagueTeams[_leagueId][msg.sender].totalValue;
+    }
+
+    function getTopUser(uint256 _leagueId) public view returns (address) {
+        uint256 max = 0;
+        address user;
+        for (uint256 i = 0; i < leagueUsers[_leagueId].length; i++) {
+            uint256 value = leagueTeams[_leagueId][leagueUsers[_leagueId][i]]
+                .totalValue;
+            if (value > max) {
+                max = value;
+                user = leagueUsers[_leagueId][i];
+            }
+        }
+        return user;
+    }
+
+    function getUserPlayers(
+        uint256 _leagueId
+    ) public view returns (address[] memory) {
+        return leagueTeams[_leagueId][msg.sender].playerAddress;
+    }
+
+    function getUsers(
+        uint256 _leagueId
+    ) public view returns (address[] memory) {
+        return leagueUsers[_leagueId];
+    }
 }
