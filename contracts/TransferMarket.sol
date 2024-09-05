@@ -15,10 +15,6 @@ contract PlayerTokenAMM {
     }
 
     mapping(address => Pool) public pools;
-    address[] public playerTokens;
-
-    event PoolCreated(address indexed playerToken);
-
     modifier onlyOwner() {
         require(msg.sender == owner, "Only owner can call this function");
         _;
@@ -27,6 +23,10 @@ contract PlayerTokenAMM {
     constructor(address _baseToken, address _owner) {
         baseToken = IERC20(_baseToken);
         owner = _owner;
+    }
+
+    function setNewOwner(address _newOwner) external onlyOwner {
+        owner = _newOwner;
     }
 
     function createPool(
@@ -54,9 +54,6 @@ contract PlayerTokenAMM {
         Pool storage newPool = pools[_playerToken];
         newPool.baseTokenReserve = baseTokenAmount;
         newPool.playerTokenReserve = playerTokenAmount;
-        playerTokens.push(_playerToken);
-
-        emit PoolCreated(_playerToken);
     }
 
     function buyPlayerToken(address _playerToken) external onlyOwner {
@@ -96,5 +93,12 @@ contract PlayerTokenAMM {
         Pool storage pool = pools[_playerToken];
         require(pool.baseTokenReserve > 0, "Pool does not exist");
         return (pool.baseTokenReserve * 1e18) / pool.playerTokenReserve;
+    }
+
+    function getPoolInfo(
+        address _playerToken
+    ) external view returns (uint256, uint256) {
+        Pool storage pool = pools[_playerToken];
+        return (pool.baseTokenReserve, pool.playerTokenReserve);
     }
 }
