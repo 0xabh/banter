@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "./TransferMarket.sol";
 
 contract PlayerToken is ERC20 {
@@ -30,7 +31,7 @@ contract PlayerToken is ERC20 {
     }
 }
 
-contract BanterFantasySports {
+contract BanterFantasySports is ReentrancyGuard {
     address public owner;
     PlayerTokenAMM public playerTokenAMM;
     IERC20 public baseToken;
@@ -101,6 +102,20 @@ contract BanterFantasySports {
         );
         _;
     }
+    modifier checkEligibility(uint256 _leagueId) {
+        uint256 max = 0;
+        address eligible;
+        for (uint256 i = 0; leagueUsers[_leagueId].length > 0; i++) {
+            uint256 value = leagueTeams[_leagueId][leagueUsers[_leagueId][i]]
+                .totalValue;
+            if (max < value) {
+                max = value;
+                eligible = leagueUsers[_leagueId][i];
+            }
+        }
+        require(eligible == msg.sender, "You are not eligible");
+        _;
+    }
 
     constructor(
         address _baseTokenAddress,
@@ -168,9 +183,8 @@ contract BanterFantasySports {
         leagues[_leagueId].userStakes[msg.sender] = 10 * 1e18;
         leagues[_leagueId].totalStakes += 10 * 1e18;
         leagueUsers[_leagueId].push(msg.sender);
-        uint256 totalPrice = getTotalPrice(_playerTokens);
         require(
-            totalPrice <= virtualBalance,
+            getTotalPrice(_playerTokens) <= virtualBalance,
             "Total price exceeds 10 Base token"
         );
         uint256 totalValue = 0;
@@ -303,5 +317,22 @@ contract BanterFantasySports {
                 break;
             }
         }
+    }
+
+    function claimRewards(
+        uint256 _leagueId
+    ) external isTeamOwned(_leagueId) checkEligibility(_leagueId) nonReentrant {
+        League storage league = leagues[_leagueId];
+        require(league.resolved, "League not resolved");
+
+        uint256 userStake = league.userStakes[msg.sender];
+        require(userStake > 0, "No winning stake");
+
+        uint256 totalWinningStakes = league.totalStakes;
+        (bool success, ) = payable(msg.sender).call{value: totalWinningStakes}(
+            ""
+        );
+        require(success == true, "transfer failed");
+        league.resolved = true;
     }
 }
