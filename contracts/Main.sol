@@ -33,11 +33,22 @@ contract BanterFantasySports {
     address public owner;
     PlayerTokenAMM public playerTokenAMM;
     IERC20 public chzToken;
+    uint256 nextleagueId=1;
     struct Player {
         PlayerToken token;
         uint256 price; // in CHZ
     }
+    struct League {
+        string description;
+        uint256 resolveTime;
+        mapping(bool => uint256) totalStakes;
+        mapping(address => mapping(bool => uint256)) userStakes;
+        bool resolved;
+        bool outcome;
+    }
+
     mapping(address => Player) public players;
+    mapping(uint256 => League) public leagues;
 
     event PlayerAdded(
         address indexed tokenAddress,
@@ -45,6 +56,11 @@ contract BanterFantasySports {
         uint256 position,
         uint256 team,
         uint256 price
+    );
+    event LeagueCreated(
+        uint256 indexed leagueId,
+        string description,
+        uint256 resolveTime
     );
 
 
@@ -94,6 +110,18 @@ contract BanterFantasySports {
             _team,
             _price * 1e18
         );
+    }
+
+    function createLeagues(string memory _description, uint256 _resolveTime)
+        external
+        onlyOwner
+    {
+        require(_resolveTime > block.timestamp, "Invalid resolve time");
+        League storage newLeague = leagues[nextleagueId];
+        newLeague.description = _description;
+        newLeague.resolveTime = _resolveTime;
+        emit LeagueCreated(nextleagueId, _description, _resolveTime);
+        nextleagueId++;
     }
     
 }
