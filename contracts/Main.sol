@@ -32,17 +32,18 @@ contract PlayerToken is ERC20 {
 contract BanterFantasySports {
     address public owner;
     PlayerTokenAMM public playerTokenAMM;
-    IERC20 public chzToken;
+    IERC20 public baseToken;
     uint256 nextleagueId=1;
+    uint256 public virtualBalance = 10 * 1e18;
     struct Player {
         PlayerToken token;
-        uint256 price; // in CHZ
+        uint256 price;
     }
     struct League {
         string description;
         uint256 resolveTime;
-        mapping(bool => uint256) totalStakes;
-        mapping(address => mapping(bool => uint256)) userStakes;
+        uint256 totalStakes;
+        mapping(address => uint256) userStakes;
         bool resolved;
         bool outcome;
     }
@@ -95,11 +96,11 @@ contract BanterFantasySports {
     }
 
     constructor(
-        address _chzTokenAddress,
+        address _baseTokenAddress,
         address _playerTokenAMMAddress,
         address _owner
     ) {
-        chzToken = IERC20(_chzTokenAddress);
+        baseToken = IERC20(_baseTokenAddress);
         playerTokenAMM = PlayerTokenAMM(_playerTokenAMMAddress);
         owner = _owner;
     }
@@ -124,9 +125,9 @@ contract BanterFantasySports {
             _price * 1e18
         );
         newPlayerToken.mint(address(this), _initialSupply);
-        chzToken.approve(address(playerTokenAMM), _poolSupply * 1e18);
+        baseToken.approve(address(playerTokenAMM), _price *_poolSupply * 1e18);
         newPlayerToken.approve(address(playerTokenAMM), _poolSupply * 1e18);
-        playerTokenAMM.createPool(address(newPlayerToken), _poolSupply * 1e18);
+        playerTokenAMM.createPool(address(newPlayerToken), _poolSupply * 1e18, _price);
         emit PlayerAdded(
             address(newPlayerToken),
             _name,
@@ -150,6 +151,7 @@ contract BanterFantasySports {
 
     function createTeam(address[] memory _playerTokens, uint256 _leagueId)
         external
+        payable
     {
         require(
             _playerTokens.length <= 11,
@@ -163,14 +165,15 @@ contract BanterFantasySports {
             leagueTeams[_leagueId][msg.sender].playerAddress.length == 0,
             "You already own a team"
         );
-
+        require(msg.value == 10 * 1e18, "Stake chz to create team");
+        leagues[_leagueId].userStakes[msg.sender] = 10 * 1e18;
+        leagues[_leagueId].totalStakes += 10 * 1e18;
         uint256 totalPrice = getTotalPrice(_playerTokens);
         require(
-            chzToken.allowance(msg.sender, address(this)) >= totalPrice,
-            "Stake CHZ first"
+            totalPrice <= virtualBalance,
+            "Total price exceeds 10 Base token"
         );
         uint256 totalValue = 0;
-
         for (uint256 i = 0; i < _playerTokens.length; i++) {
             address playerTokenAddress = _playerTokens[i];
             require(players[playerTokenAddress].price > 0, "Invalid player");
@@ -190,36 +193,33 @@ contract BanterFantasySports {
             playerToken.transfer(msg.sender, 1e18);
             totalValue += players[playerTokenAddress].price;
         }
-
-        chzToken.transferFrom(msg.sender, address(this), totalPrice);
         leagueTeams[_leagueId][msg.sender].totalValue = totalValue;
-
         emit TeamCreated(msg.sender, _playerTokens, _leagueId);
     }
 
     function buyPLayer(address _buyPlayerToken, uint256 _leagueId)
         external
+        payable
         isTeamOwned(_leagueId)
     {
         require(
             leagueTeams[_leagueId][msg.sender].players[_buyPlayerToken] == 0,
             "You already own this player"
         );
+        require(msg.value == 5 * 1e16, "Give the fees for transfering");
         uint256 currentPrice = playerTokenAMM.getCurrentPlayerPrice(
             _buyPlayerToken
         );
-        require(
-            chzToken.allowance(msg.sender, address(this)) >= currentPrice,
-            "Pay actual price of player"
-        );
-        chzToken.transfer(address(this), currentPrice);
         uint256 totalValue = leagueTeams[_leagueId][msg.sender].totalValue;
+        require(
+            virtualBalance - totalValue >= currentPrice,
+            "you don't have balance to buy this player"
+        );
         totalValue += currentPrice;
         leagueTeams[_leagueId][msg.sender].totalValue = totalValue;
-        chzToken.approve(address(playerTokenAMM), currentPrice);
-        playerTokenAMM.buyPlayerToken(_buyPlayerToken, msg.sender);
+        baseToken.approve(address(playerTokenAMM), currentPrice);
+        playerTokenAMM.buyPlayerToken(_buyPlayerToken);
         leagueTeams[_leagueId][msg.sender].playerAddress.push(_buyPlayerToken);
-
         leagueTeams[_leagueId][msg.sender].players[
             _buyPlayerToken
         ] = currentPrice;

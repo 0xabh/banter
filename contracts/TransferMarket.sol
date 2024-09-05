@@ -29,10 +29,10 @@ contract PlayerTokenAMM {
         owner = _owner;
     }
 
-    function createPool(
-        address _playerToken,
-        uint256 _initialLiquidity
-    ) external onlyOwner {
+    function createPool(address _playerToken, uint256 _initialLiquidity, uint256 _price)
+        external
+        onlyOwner
+    {
         require(
             pools[_playerToken].baseTokenReserve == 0,
             "Pool already exists"
@@ -40,7 +40,7 @@ contract PlayerTokenAMM {
 
         IERC20 playerToken = IERC20(_playerToken);
 
-        uint256 baseTokenAmount = _initialLiquidity;
+        uint256 baseTokenAmount = _price* _initialLiquidity;
         uint256 playerTokenAmount = _initialLiquidity;
 
         baseToken.safeTransferFrom(msg.sender, address(this), baseTokenAmount);
@@ -57,7 +57,8 @@ contract PlayerTokenAMM {
 
         emit PoolCreated(_playerToken);
     }
-    function buyPlayerToken(address _playerToken, address _buyer)
+
+    function buyPlayerToken(address _playerToken)
         external
         onlyOwner
     {
@@ -71,7 +72,7 @@ contract PlayerTokenAMM {
         );
 
         baseToken.safeTransferFrom(msg.sender, address(this), currentPrice);
-        IERC20(_playerToken).safeTransfer(_buyer, 1e18);
+        IERC20(_playerToken).safeTransfer(msg.sender, 1e18);
 
         pool.baseTokenReserve += currentPrice;
         pool.playerTokenReserve -= 1e18;
