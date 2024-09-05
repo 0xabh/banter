@@ -52,6 +52,7 @@ contract BanterFantasySports is ReentrancyGuard {
     struct UserTeam {
         mapping(address => uint256) players;
         address[] playerAddress;
+        uint256 allotedBalance;
         uint256 totalValue;
     }
 
@@ -164,7 +165,7 @@ contract BanterFantasySports is ReentrancyGuard {
     }
 
     function createTeam(
-        address[] memory _playerTokens,
+        address[] calldata _playerTokens,
         uint256 _leagueId
     ) external payable {
         require(
@@ -183,6 +184,7 @@ contract BanterFantasySports is ReentrancyGuard {
         leagues[_leagueId].userStakes[msg.sender] = 10 * 1e18;
         leagues[_leagueId].totalStakes += 10 * 1e18;
         leagueUsers[_leagueId].push(msg.sender);
+        leagueTeams[_leagueId][msg.sender].allotedBalance = virtualBalance;
         require(
             getTotalPrice(_playerTokens) <= virtualBalance,
             "Total price exceeds 10 Base token"
@@ -208,6 +210,7 @@ contract BanterFantasySports is ReentrancyGuard {
             totalValue += players[playerTokenAddress].price;
         }
         leagueTeams[_leagueId][msg.sender].totalValue = totalValue;
+        leagueTeams[_leagueId][msg.sender].allotedBalance -= totalValue;
         emit TeamCreated(msg.sender, _playerTokens, _leagueId);
     }
 
@@ -225,7 +228,7 @@ contract BanterFantasySports is ReentrancyGuard {
         );
         uint256 totalValue = leagueTeams[_leagueId][msg.sender].totalValue;
         require(
-            virtualBalance - totalValue >= currentPrice,
+            leagueTeams[_leagueId][msg.sender].allotedBalance >= currentPrice,
             "you don't have balance to buy this player"
         );
         totalValue += currentPrice;
@@ -236,6 +239,7 @@ contract BanterFantasySports is ReentrancyGuard {
         leagueTeams[_leagueId][msg.sender].players[
             _buyPlayerToken
         ] = currentPrice;
+        leagueTeams[_leagueId][msg.sender].allotedBalance -= currentPrice;
         emit PlayerBought(_buyPlayerToken, msg.sender, currentPrice, _leagueId);
     }
 
@@ -256,11 +260,14 @@ contract BanterFantasySports is ReentrancyGuard {
             leagueTeams[_leagueId][msg.sender].players[_sellPlayerToken]
         );
         uint256 totalValue = leagueTeams[_leagueId][msg.sender].totalValue;
-        totalValue -= price;
+        totalValue -= leagueTeams[_leagueId][msg.sender].players[
+            _sellPlayerToken
+        ];
         leagueTeams[_leagueId][msg.sender].totalValue = totalValue;
         IERC20 playerToken = IERC20(_sellPlayerToken);
         playerToken.approve(address(playerTokenAMM), 1e18);
         playerTokenAMM.sellPlayerToken(_sellPlayerToken, price);
+        leagueTeams[_leagueId][msg.sender].allotedBalance += price;
         delete leagueTeams[_leagueId][msg.sender].players[_sellPlayerToken];
         _removePlayerAddress(
             leagueTeams[_leagueId][msg.sender],
