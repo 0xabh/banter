@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "./TransferMarket.sol";
 
 contract PlayerToken is ERC20 {
     uint256 public position;
@@ -30,12 +31,69 @@ contract PlayerToken is ERC20 {
 
 contract BanterFantasySports {
     address public owner;
-    constructor(address _owner){
-        owner=_owner;
+    PlayerTokenAMM public playerTokenAMM;
+    IERC20 public chzToken;
+    struct Player {
+        PlayerToken token;
+        uint256 price; // in CHZ
     }
+    mapping(address => Player) public players;
+
+    event PlayerAdded(
+        address indexed tokenAddress,
+        string name,
+        uint256 position,
+        uint256 team,
+        uint256 price
+    );
+
+
+
     modifier onlyOwner{
         require(owner==msg.sender,"you are not the owner");
         _;
+    }
+
+    constructor(
+        address _chzTokenAddress,
+        address _playerTokenAMMAddress,
+        address _owner
+    ) {
+        chzToken = IERC20(_chzTokenAddress);
+        playerTokenAMM = PlayerTokenAMM(_playerTokenAMMAddress);
+        owner = _owner;
+    }
+
+    function addPlayer(
+        string memory _name,
+        string memory _symbol,
+        uint256 _position,
+        uint256 _team,
+        uint256 _price,
+        uint256 _initialSupply,
+        uint256 _poolSupply
+    ) external onlyOwner {
+        PlayerToken newPlayerToken = new PlayerToken(
+            _name,
+            _symbol,
+            _position,
+            _team
+        );
+        players[address(newPlayerToken)] = Player(
+            newPlayerToken,
+            _price * 1e18
+        );
+        newPlayerToken.mint(address(this), _initialSupply);
+        chzToken.approve(address(playerTokenAMM), _poolSupply * 1e18);
+        newPlayerToken.approve(address(playerTokenAMM), _poolSupply * 1e18);
+        playerTokenAMM.createPool(address(newPlayerToken), _poolSupply * 1e18);
+        emit PlayerAdded(
+            address(newPlayerToken),
+            _name,
+            _position,
+            _team,
+            _price * 1e18
+        );
     }
     
 }
