@@ -80,6 +80,12 @@ contract BanterFantasySports {
         uint256 buyPrice,
         uint256 leagueId
     );
+    event PlayerSold(
+        address indexed player,
+        address owner,
+        uint256 soldPrice,
+        uint256 leagueId
+    );
 
 
     modifier onlyOwner{
@@ -225,7 +231,37 @@ contract BanterFantasySports {
         ] = currentPrice;
         emit PlayerBought(_buyPlayerToken, msg.sender, currentPrice, _leagueId);
     }
-     function getTotalPrice(address[] memory _playerTokens)
+
+    function sellPLayer(address _sellPlayerToken, uint256 _leagueId)
+        external
+        isTeamOwned(_leagueId)
+    {
+        require(
+            leagueTeams[_leagueId][msg.sender].players[_sellPlayerToken] != 0,
+            "You don't own this player"
+        );
+        uint256 currentPrice = playerTokenAMM.getCurrentPlayerPrice(
+            _sellPlayerToken
+        );
+        uint256 price = adjustPrice(
+            currentPrice,
+            leagueTeams[_leagueId][msg.sender].players[_sellPlayerToken]
+        );
+        uint256 totalValue = leagueTeams[_leagueId][msg.sender].totalValue;
+        totalValue -= price;
+        leagueTeams[_leagueId][msg.sender].totalValue = totalValue;
+        IERC20 playerToken = IERC20(_sellPlayerToken);
+        playerToken.approve(address(playerTokenAMM), 1e18);
+        playerTokenAMM.sellPlayerToken(_sellPlayerToken, price);
+        delete leagueTeams[_leagueId][msg.sender].players[_sellPlayerToken];
+        _removePlayerAddress(
+            leagueTeams[_leagueId][msg.sender],
+            _sellPlayerToken
+        );
+        emit PlayerSold(_sellPlayerToken, msg.sender, price, _leagueId);
+    }
+
+    function getTotalPrice(address[] memory _playerTokens)
         internal
         view
         returns (uint256)
@@ -236,6 +272,33 @@ contract BanterFantasySports {
             totalValue += players[_playerTokens[i]].price;
         }
         return totalValue;
+    }
+
+    function adjustPrice(uint256 currentPrice, uint256 previousPrice)
+        public
+        pure
+        returns (uint256)
+    {
+        if (currentPrice > previousPrice) {
+            uint256 increase = currentPrice - previousPrice;
+            uint256 adjustedPrice = previousPrice + (increase / 2);
+            return adjustedPrice;
+        } else {
+            return currentPrice;
+        }
+    }
+
+    function _removePlayerAddress(UserTeam storage team, address playerAddress)
+        internal
+    {
+        uint256 length = team.playerAddress.length;
+        for (uint256 i = 0; i < length; i++) {
+            if (team.playerAddress[i] == playerAddress) {
+                team.playerAddress[i] = team.playerAddress[length - 1];
+                team.playerAddress.pop();
+                break;
+            }
+        }
     }
     
 }

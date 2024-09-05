@@ -78,6 +78,20 @@ contract PlayerTokenAMM {
         pool.playerTokenReserve -= 1e18;
     }
 
+    function sellPlayerToken(address _playerToken, uint256 price)
+        external
+        onlyOwner
+    {
+        Pool storage pool = pools[_playerToken];
+        require(pool.baseTokenReserve > 0, "Pool does not exist");
+
+        IERC20(_playerToken).safeTransferFrom(msg.sender, address(this), 1e18);
+        baseToken.safeTransfer(msg.sender, price);
+
+        pool.playerTokenReserve += 1e18;
+        pool.baseTokenReserve -= price;
+    }
+
     function getCurrentPlayerPrice(address _playerToken)
         public
         view
