@@ -3,37 +3,28 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import "./TransferMarket.sol";
 
-contract PlayerToken is ERC20 {
-    uint256 public position;
-    uint256 public team;
-    address public owner;
+import "./PlayerToken.sol";
 
-    constructor(
-        string memory name,
-        string memory symbol,
-        uint256 _position,
-        uint256 _team
-    ) ERC20(name, symbol) {
-        position = _position;
-        team = _team;
-        owner = msg.sender;
-    }
+interface IPlayerTokenAMM {
+    function createPool(
+        address _playerToken,
+        uint256 _initialLiquidity,
+        uint256 _price
+    ) external;
 
-    modifier onlyOwner() {
-        require(owner == msg.sender, "you are not the owner");
-        _;
-    }
+    function buyPlayerToken(address _playerToken) external;
 
-    function mint(address to, uint256 amount) external onlyOwner {
-        _mint(to, amount * 1e18);
-    }
+    function sellPlayerToken(
+        address _playerToken,
+        uint256 price
+    ) external;
+
+    function getCurrentPlayerPrice(address _playerToken) external view returns (uint256);
 }
-
 contract BanterFantasySports is ReentrancyGuard {
     address public owner;
-    PlayerTokenAMM public playerTokenAMM;
+    IPlayerTokenAMM public playerTokenAMM;
     IERC20 public baseToken;
     uint256 nextleagueId = 1;
     uint256 public virtualBalance = 10 * 1e18;
@@ -103,20 +94,6 @@ contract BanterFantasySports is ReentrancyGuard {
         );
         _;
     }
-    modifier checkEligibility(uint256 _leagueId) {
-        uint256 max = 0;
-        address eligible;
-        for (uint256 i = 0; leagueUsers[_leagueId].length > 0; i++) {
-            uint256 value = leagueTeams[_leagueId][leagueUsers[_leagueId][i]]
-                .totalValue;
-            if (max < value) {
-                max = value;
-                eligible = leagueUsers[_leagueId][i];
-            }
-        }
-        require(eligible == msg.sender, "You are not eligible");
-        _;
-    }
 
     constructor(
         address _baseTokenAddress,
@@ -124,7 +101,7 @@ contract BanterFantasySports is ReentrancyGuard {
         address _owner
     ) {
         baseToken = IERC20(_baseTokenAddress);
-        playerTokenAMM = PlayerTokenAMM(_playerTokenAMMAddress);
+        playerTokenAMM = IPlayerTokenAMM(_playerTokenAMMAddress);
         owner = _owner;
     }
 
@@ -328,9 +305,10 @@ contract BanterFantasySports is ReentrancyGuard {
 
     function claimRewards(
         uint256 _leagueId
-    ) external isTeamOwned(_leagueId) checkEligibility(_leagueId) nonReentrant {
+    ) external isTeamOwned(_leagueId) nonReentrant {
         League storage league = leagues[_leagueId];
         require(league.resolved, "League not resolved");
+        require(getTopUser(_leagueId) == msg.sender, "You can't claim rewards");
 
         uint256 userStake = league.userStakes[msg.sender];
         require(userStake > 0, "No winning stake");
