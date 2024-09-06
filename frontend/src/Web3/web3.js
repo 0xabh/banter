@@ -6,7 +6,7 @@ import abi2 from "../abis/BanterFantasySports.json";
 
 export const baseTokenContractAddress = "0xDee3F1Ad0E5A2aAfDFC966fD574FD88E40F2f658";
 export const TokenAMMContractAddress="0x9D6d157b309c161a5395E04FFBd903155642Df3E";
-export const MainContractAddress=" 0x7783Eb57994CA3D2d94c56bdb7b4511e259Ab1b0";
+export const MainContractAddress="0x7783Eb57994CA3D2d94c56bdb7b4511e259Ab1b0";
 export function getWeb3Provider() {
   const provider = new ethers.providers.Web3Provider(window.ethereum);
   return provider;
@@ -29,19 +29,21 @@ export const getTokenContract = (provider, address) => {
   return new ethers.Contract(address, contractABI, signer);
 };
 
-export const getTokenAMMContract = (provider, address) => {
+export const getTokenAMMContract = (provider) => {
   const contractABI = abi1.abi;
-  return new ethers.Contract(address, contractABI, provider);
+  const signer = provider.getSigner();
+  return new ethers.Contract(TokenAMMContractAddress, contractABI, signer);
 };
 
-export const getMainContract = (provider, address) => {
+export const getMainContract = (provider) => {
   const contractABI = abi2.abi;
-  return new ethers.Contract(address, contractABI, provider);
+  const signer = provider.getSigner();
+  return new ethers.Contract(MainContractAddress, contractABI, signer);
 };
 
-export const getMainContractRead = (provider, address) => {
+export const getMainContractRead = (provider) => {
     const contractABI = abi2.abi;
-    return new ethers.Contract(address, contractABI, provider);
+    return new ethers.Contract(MainContractAddress, contractABI, provider);
   };
 
 export const addNetwork = async () => {
