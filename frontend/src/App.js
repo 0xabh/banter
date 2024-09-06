@@ -31,7 +31,6 @@ function App() {
     await tx.wait();
   }
 
-
   const addPLayer=async()=>{
     const provider=getWeb3Provider();
     const signer = provider.getSigner();
@@ -42,10 +41,33 @@ function App() {
       console.log(name);
     });
     console.log(contract);
-    const tx=await contract.addPlayer("Ronaldo","RON",1,1,2,10000,1000,{gasLimit:3000000});
+    const tx=await contract.addPlayer("Ronaldo","RON",1,1,2,10000,1000,{gasLimit:ethers.utils.hexlify(3000000)});
     await tx.wait();
   }
-  
+  const getOwner=async()=>{
+    const provider=getWeb3Provider();
+    const contract=getMainContractRead(provider);
+    const tx=await contract.owner();
+    console.log(tx);
+  }
+  const createTeam=async()=>{
+    const players=[""];
+    const leagueId= 1;
+    const provider=getWeb3Provider();
+    const contract=getMainContract(provider);
+    console.log(contract);
+    const amount = ethers.utils.parseEther("10");
+    const tx=await contract.createTeam(players,leagueId,{value:amount});
+    await tx.wait();
+  }
+
+  const createLeague=async()=>{
+    const provider=getWeb3Provider();
+    const contract=getMainContract(provider);
+    console.log(contract);
+    const tx=await contract.createLeagues("LALIGA",100000000,{gasLimit: ethers.utils.hexlify(3000000)});
+    await tx.wait();
+  }
 
 
 
@@ -55,6 +77,8 @@ function App() {
       <button onClick={mintBaseToken}>Mint</button>
       <button onClick={setNewOwner}>Set</button>
       <button onClick={addPLayer}>Add</button>
+      <button onClick={getOwner}>owner</button>
+      <button onClick={createLeague}>create League</button>
     </div>
   );
 }
