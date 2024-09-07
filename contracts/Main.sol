@@ -15,13 +15,13 @@ interface IPlayerTokenAMM {
 
     function buyPlayerToken(address _playerToken) external;
 
-    function sellPlayerToken(
-        address _playerToken,
-        uint256 price
-    ) external;
+    function sellPlayerToken(address _playerToken, uint256 price) external;
 
-    function getCurrentPlayerPrice(address _playerToken) external view returns (uint256);
+    function getCurrentPlayerPrice(
+        address _playerToken
+    ) external view returns (uint256);
 }
+
 contract BanterFantasySports is ReentrancyGuard {
     address public owner;
     IPlayerTokenAMM public playerTokenAMM;
@@ -150,7 +150,7 @@ contract BanterFantasySports is ReentrancyGuard {
             "Can't select more than 11 players"
         );
         require(
-            _leagueId <= nextleagueId && _leagueId != 0,
+            _leagueId < nextleagueId && _leagueId != 0,
             "League doesn't exist"
         );
         require(
@@ -196,6 +196,10 @@ contract BanterFantasySports is ReentrancyGuard {
         uint256 _leagueId
     ) external payable isTeamOwned(_leagueId) {
         require(
+            _leagueId < nextleagueId && _leagueId != 0,
+            "League doesn't exist"
+        );
+        require(
             leagueTeams[_leagueId][msg.sender].players[_buyPlayerToken] == 0,
             "You already own this player"
         );
@@ -227,6 +231,10 @@ contract BanterFantasySports is ReentrancyGuard {
         require(
             leagueTeams[_leagueId][msg.sender].players[_sellPlayerToken] != 0,
             "You don't own this player"
+        );
+        require(
+            _leagueId < nextleagueId && _leagueId != 0,
+            "League doesn't exist"
         );
         require(msg.value == 5 * 1e16, "Give the fees for transfering");
         uint256 currentPrice = playerTokenAMM.getCurrentPlayerPrice(
@@ -306,6 +314,10 @@ contract BanterFantasySports is ReentrancyGuard {
     function claimRewards(
         uint256 _leagueId
     ) external isTeamOwned(_leagueId) nonReentrant {
+        require(
+            _leagueId < nextleagueId && _leagueId != 0,
+            "League doesn't exist"
+        );
         League storage league = leagues[_leagueId];
         require(league.resolved, "League not resolved");
         require(getTopUser(_leagueId) == msg.sender, "You can't claim rewards");
@@ -321,8 +333,11 @@ contract BanterFantasySports is ReentrancyGuard {
         league.resolved = true;
     }
 
-    function getTotalValue(uint256 _leagueId) public view returns (uint256) {
-        return leagueTeams[_leagueId][msg.sender].totalValue;
+    function getTotalValue(
+        uint256 _leagueId,
+        address user
+    ) public view returns (uint256) {
+        return leagueTeams[_leagueId][user].totalValue;
     }
 
     function getTopUser(uint256 _leagueId) public view returns (address) {
@@ -340,9 +355,10 @@ contract BanterFantasySports is ReentrancyGuard {
     }
 
     function getUserPlayers(
-        uint256 _leagueId
+        uint256 _leagueId,
+        address user
     ) public view returns (address[] memory) {
-        return leagueTeams[_leagueId][msg.sender].playerAddress;
+        return leagueTeams[_leagueId][user].playerAddress;
     }
 
     function getUsers(
