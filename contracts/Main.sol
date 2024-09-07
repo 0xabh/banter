@@ -354,13 +354,6 @@ contract BanterFantasySports is ReentrancyGuard {
         return user;
     }
 
-    function getUserPlayers(
-        uint256 _leagueId,
-        address user
-    ) public view returns (address[] memory) {
-        return leagueTeams[_leagueId][user].playerAddress;
-    }
-
     function getUsers(
         uint256 _leagueId
     ) public view returns (address[] memory) {
