@@ -6,13 +6,13 @@ import abi2 from "../abis/BanterFantasySports.json";
 export const baseTokenContractAddress =
   "0xDee3F1Ad0E5A2aAfDFC966fD574FD88E40F2f658";
 export const TokenAMMContractAddress =
-  "0x9D6d157b309c161a5395E04FFBd903155642Df3E";
-export const MainContractAddress = "0x7783Eb57994CA3D2d94c56bdb7b4511e259Ab1b0";
+  "0xA1c4D4b553b8dfD5E52ee41b21a765AC1Eaf2c62";
+export const MainContractAddress = "0x98c25a98DC28E994B45EC9eAF8C912845109d759";
 
 export const players = [
   {
     name: "Ronaldo",
-    address: "0x3cC3E4C3BF64A133Df02B24541AE3ea664175573",
+    address: "0x76a6c208107bEe619B3445e58fcbAe20DCCe1Dd8",
     Price: "2 Token",
     Team: "Portugal",
     Image:
@@ -20,7 +20,7 @@ export const players = [
   },
   {
     name: "Messi",
-    address: "0x7a9B1F7818dDD00bBc2ab10eb584269851CfEe59",
+    address: "0x60F95a8A76d9992d3d5671613812c9aea866b224",
     Price: "3 Token",
     Team: "Argentina",
     Image:
@@ -55,12 +55,12 @@ export const players = [
 export const Leagues = [
   {
     name: "LALIGA",
-    title:"The top league in Spain",
+    title: "The top league in Spain",
     LeagueId: "1",
   },
   {
     name: "Bundesliga",
-    title:"The top league in Germany",
+    title: "The top league in Germany",
     LeagueId: "2",
   },
 ];
@@ -90,6 +90,10 @@ export const getTokenAMMContract = (provider) => {
   const contractABI = abi1.abi;
   const signer = provider.getSigner();
   return new ethers.Contract(TokenAMMContractAddress, contractABI, signer);
+};
+export const getTokenAMMContractRead = (provider) => {
+  const contractABI = abi1.abi;
+  return new ethers.Contract(TokenAMMContractAddress, contractABI, provider);
 };
 
 export const getMainContract = (provider) => {
