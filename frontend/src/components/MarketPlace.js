@@ -15,7 +15,7 @@ const PlayerCard = ({ player }) => {
   const provider = getWeb3Provider();
   const contract = getMainContract(provider);
   async function buyPlayer(address) {
-    const amount = ethers.utils.parseEther("0.05");
+    const amount = ethers.utils.parseEther("0.5");
     try {
       const tx = await contract.buyPLayer(address, leagueId, { value: amount });
       await tx.wait();
@@ -25,7 +25,7 @@ const PlayerCard = ({ player }) => {
     }
   }
   async function sellPlayer(address) {
-    const amount = ethers.utils.parseEther("0.05");
+    const amount = ethers.utils.parseEther("0.5");
     try {
       const tx = await contract.sellPLayer(address, leagueId, {
         value: amount,
@@ -51,7 +51,7 @@ const PlayerCard = ({ player }) => {
   useEffect(() => {
     const fetchPrices = async () => {
       const priceMap = {};
-      for (const player of players.slice(0, 2)) {
+      for (const player of players) {
         const price = await getPrice(player.address);
         priceMap[player.address] = price;
       }
@@ -102,7 +102,7 @@ export default function MarketPlace() {
       className="flex flex-wrap gap-10 mt-10"
       style={{ marginLeft: "200px" }}
     >
-      {players.slice(0, 2).map((player, index) => (
+      {players.map((player, index) => (
         <div key={index} className="w-full sm:w-1/2 lg:w-1/5 mb-6">
           <PlayerCard player={player} />
         </div>

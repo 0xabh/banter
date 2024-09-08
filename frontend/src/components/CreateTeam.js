@@ -1,12 +1,12 @@
 import React, { useState } from "react";
-import { getMainContract, getWeb3Provider, players } from "../Web3/web3";
+import { getMainContract, getMainContractRead, getWeb3Provider, players } from "../Web3/web3";
 import { ethers } from "ethers";
 import { Button, Card, Checkbox, Label } from "flowbite-react";
 import logo from "../Img/trophy.png";
 import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 
-export default function CreateTeam() {
+export default function CreateTeam(props) {
   const [playersAdded, setPlayersAdded] = useState([]);
   console.log(playersAdded);
   const { leagueId } = useParams();
@@ -17,6 +17,11 @@ export default function CreateTeam() {
     }
     const provider = getWeb3Provider();
     const contract = getMainContract(provider);
+    const contractRead=getMainContractRead(provider);
+    contractRead.on("TeamCreated",(user,playyerTokens, leagueId)=>{
+      props.setStatus(true);
+      toast.success("Team created successfully");
+    })
     console.log(contract);
     const amount = ethers.utils.parseEther("10");
     try {
@@ -25,7 +30,7 @@ export default function CreateTeam() {
       });
       await tx.wait();
     } catch (error) {
-      toast.error("Transaction failed");
+      toast.error(error.reason);
     }
   };
   const handleCheckboxChange = (event, address) => {
@@ -39,6 +44,9 @@ export default function CreateTeam() {
   };
   return (
     <div>
+      <h1 className="flex justify-center mt-2 font-semibold">
+        Disclaimer: You have to Stake 10 CHZ to Create Team
+      </h1>
       <div
         className="flex flex-row gap-3 mt-10"
         style={{ marginLeft: "200px" }}
