@@ -77,6 +77,7 @@ contract BanterFantasySports is ReentrancyGuard {
         uint256 soldPrice,
         uint256 leagueId
     );
+    event RewardsClaimed(address user);
 
     modifier onlyOwner() {
         require(owner == msg.sender, "you are not the owner");
@@ -165,12 +166,6 @@ contract BanterFantasySports is ReentrancyGuard {
         for (uint256 i = 0; i < _playerTokens.length; i++) {
             address playerTokenAddress = _playerTokens[i];
             require(players[playerTokenAddress].price > 0, "Invalid player");
-            require(
-                leagueTeams[_leagueId][msg.sender].players[
-                    playerTokenAddress
-                ] == 0,
-                "Already owned"
-            );
             leagueTeams[_leagueId][msg.sender].players[
                 playerTokenAddress
             ] = players[playerTokenAddress].price;
@@ -198,7 +193,7 @@ contract BanterFantasySports is ReentrancyGuard {
             leagueTeams[_leagueId][msg.sender].players[_buyPlayerToken] == 0,
             "You already own this player"
         );
-        require(msg.value == 5 * 1e16, "Give the fees for transfering");
+        require(msg.value == 5 * 1e17, "Give the fees for transfering");
         uint256 currentPrice = playerTokenAMM.getCurrentPlayerPrice(
             _buyPlayerToken
         );
@@ -231,7 +226,7 @@ contract BanterFantasySports is ReentrancyGuard {
             _leagueId < nextleagueId && _leagueId != 0,
             "League doesn't exist"
         );
-        require(msg.value == 5 * 1e16, "Give the fees for transfering");
+        require(msg.value == 5 * 1e17, "Give the fees for transfering");
         uint256 currentPrice = playerTokenAMM.getCurrentPlayerPrice(
             _sellPlayerToken
         );
@@ -308,31 +303,30 @@ contract BanterFantasySports is ReentrancyGuard {
         }
     }
 
-    function claimRewards(
-        uint256 _leagueId
-    ) external isTeamOwned(_leagueId) nonReentrant {
+    function claimRewards(uint256 _leagueId) external isTeamOwned(_leagueId) {
         require(
             _leagueId < nextleagueId && _leagueId != 0,
             "League doesn't exist"
         );
-        League storage league = leagues[_leagueId];
-        require(league.gameWeek < 5, "can't claim");
-        uint256 gameWeekEndTime = league.resolveTime -
-            league.gameWeekDuration *
-            (5 - league.gameWeek);
+        require(leagues[_leagueId].gameWeek < 5, "can't claim");
+        uint256 gameWeekEndTime = leagues[_leagueId].resolveTime -
+            leagues[_leagueId].gameWeekDuration *
+            (5 - leagues[_leagueId].gameWeek);
 
         require(
             block.timestamp >= gameWeekEndTime,
             "Can't claim rewards yet for this game week"
         );
         require(getTopUser(_leagueId) == msg.sender, "You can't claim rewards");
-        uint256 totalWinningStakes = league.totalStakes;
+        uint256 totalWinningStakes = leagues[_leagueId].totalStakes;
         (bool success, ) = payable(msg.sender).call{value: totalWinningStakes}(
             ""
         );
         require(success == true, "transfer failed");
         delete leagueTeams[_leagueId][msg.sender];
-        league.gameWeek++;
+        leagues[_leagueId].gameWeek++;
+        leagues[_leagueId].totalStakes = 0;
+        emit RewardsClaimed(msg.sender);
     }
 
     function getUserPlayers(

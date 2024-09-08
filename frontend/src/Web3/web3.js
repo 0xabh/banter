@@ -6,13 +6,13 @@ import abi2 from "../abis/BanterFantasySports.json";
 export const baseTokenContractAddress =
   "0xDee3F1Ad0E5A2aAfDFC966fD574FD88E40F2f658";
 export const TokenAMMContractAddress =
-  "0xA1c4D4b553b8dfD5E52ee41b21a765AC1Eaf2c62";
-export const MainContractAddress = "0x98c25a98DC28E994B45EC9eAF8C912845109d759";
+  "0x4494DE11e919C206a8ed3Eb332c567b3d2298D40";
+export const MainContractAddress = "0x989D3e26084158feEf8431F367d59CffE00bf1E0";
 
 export const players = [
   {
     name: "Ronaldo",
-    address: "0x76a6c208107bEe619B3445e58fcbAe20DCCe1Dd8",
+    address: "0xc16E9BC3aC324a4EBBccD3dCFD1fE051F6Ff4cAB",
     Price: "2 Token",
     Team: "Portugal",
     Image:
@@ -20,7 +20,7 @@ export const players = [
   },
   {
     name: "Messi",
-    address: "0x60F95a8A76d9992d3d5671613812c9aea866b224",
+    address: "0x21Ddcea930FE23d3080b574a099afd96Fd909763",
     Price: "3 Token",
     Team: "Argentina",
     Image:
@@ -28,24 +28,24 @@ export const players = [
   },
   {
     name: "Neymar",
-    address: "0x7a9B1F7818dDD00bBc2ab10eb584269851CfEe59",
-    Price: "3 Token",
+    address: "0x429D10Eae3161fE2e602767C3348E1C0B129B028",
+    Price: "2 Token",
     Team: "Brazil",
     Image:
       "https://media.gettyimages.com/id/1239479538/photo/brazils-neymar-celebrates-after-scoring-against-chile-during-their-south-american.jpg?s=612x612&w=0&k=20&c=ufolQgSCVAmct-wQwKqYhMo_hEnge547guvQE8ZasLU=",
   },
   {
     name: "Mbappe",
-    address: "0x7a9B1F7818dDD00bBc2ab10eb584269851CfEe59",
-    Price: "3 Token",
+    address: "0x92C183F351f5d9165328b9B4F791E3a19BD02B60",
+    Price: "1 Token",
     Team: "France",
     Image:
       "https://media.gettyimages.com/id/1495838361/photo/paris-france-kylian-mbappe-of-paris-saint-germain-in-action-during-the-ligue-1-match-between.jpg?s=612x612&w=0&k=20&c=2c9LAuW-AhVX41lx9gHYsfeaZFZKSnswSOxgODu3yL8=",
   },
   {
     name: "Zlatan",
-    address: "0x7a9B1F7818dDD00bBc2ab10eb584269851CfEe59",
-    Price: "3 Token",
+    address: "0x974Ceb22bE1495aECDCB4814B6eB143f015BC3Ca",
+    Price: "2 Token",
     Team: "Sweden",
     Image:
       "https://media.gettyimages.com/id/1474402333/photo/udine-italy-zlatan-ibrahimovic-of-ac-milan-celebrates-after-scoring-the-teams-first-goal-from.jpg?s=612x612&w=0&k=20&c=kLev4LbKU0S2bUOwO58K3u5K42hgVTAE1VjPXIIhCRU=",
@@ -54,7 +54,7 @@ export const players = [
 
 export const Leagues = [
   {
-    name: "LALIGA",
+    name: "LA LIGA",
     title: "The top league in Spain",
     LeagueId: "1",
   },
@@ -62,6 +62,11 @@ export const Leagues = [
     name: "Bundesliga",
     title: "The top league in Germany",
     LeagueId: "2",
+  },
+  {
+    name: "Premier League",
+    title: "The top league in England",
+    LeagueId: "3",
   },
 ];
 export function getWeb3Provider() {
@@ -152,4 +157,9 @@ export async function switchNetwork() {
         console.error(error);
       }
     });
+}
+export function getDecimal(value, decimal) {
+  const decimalValue = ethers.BigNumber.from(value);
+  const ethValue = ethers.utils.formatEther(decimalValue);
+  return parseFloat(ethValue).toFixed(decimal);
 }
