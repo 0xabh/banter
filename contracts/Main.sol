@@ -34,11 +34,11 @@ contract BanterFantasySports is ReentrancyGuard {
     }
     struct League {
         string description;
-        uint256 resolveTime;
         uint256 totalStakes;
-        mapping(address => uint256) userStakes;
+        uint256 resolveTime;
+        uint256 gameWeek;
+        uint256 gameWeekDuration;
         bool resolved;
-        bool outcome;
     }
     struct UserTeam {
         mapping(address => uint256) players;
@@ -59,11 +59,7 @@ contract BanterFantasySports is ReentrancyGuard {
         uint256 team,
         uint256 price
     );
-    event LeagueCreated(
-        uint256 indexed leagueId,
-        string description,
-        uint256 resolveTime
-    );
+    event LeagueCreated(uint256 indexed leagueId, string description);
     event TeamCreated(
         address indexed user,
         address[] playyerTokens,
@@ -158,7 +154,6 @@ contract BanterFantasySports is ReentrancyGuard {
             "You already own a team"
         );
         require(msg.value == 10 * 1e18, "Stake chz to create team");
-        leagues[_leagueId].userStakes[msg.sender] = 10 * 1e18;
         leagues[_leagueId].totalStakes += 10 * 1e18;
         leagueUsers[_leagueId].push(msg.sender);
         leagueTeams[_leagueId][msg.sender].allotedBalance = virtualBalance;
@@ -265,11 +260,13 @@ contract BanterFantasySports is ReentrancyGuard {
         string memory _description,
         uint256 _resolveTime
     ) external onlyOwner {
-        require(_resolveTime > block.timestamp, "Invalid resolve time");
+        require(_resolveTime >= block.timestamp, "Invalid resolved time");
         League storage newLeague = leagues[nextleagueId];
         newLeague.description = _description;
         newLeague.resolveTime = _resolveTime;
-        emit LeagueCreated(nextleagueId, _description, _resolveTime);
+        newLeague.gameWeekDuration = (_resolveTime - block.timestamp) / 5;
+        newLeague.gameWeek = 1;
+        emit LeagueCreated(nextleagueId, _description);
         nextleagueId++;
     }
 
@@ -319,25 +316,30 @@ contract BanterFantasySports is ReentrancyGuard {
             "League doesn't exist"
         );
         League storage league = leagues[_leagueId];
-        require(league.resolved, "League not resolved");
+        require(league.gameWeek < 5, "can't claim");
+        uint256 gameWeekEndTime = league.resolveTime -
+            league.gameWeekDuration *
+            (5 - league.gameWeek);
+
+        require(
+            block.timestamp >= gameWeekEndTime,
+            "Can't claim rewards yet for this game week"
+        );
         require(getTopUser(_leagueId) == msg.sender, "You can't claim rewards");
-
-        uint256 userStake = league.userStakes[msg.sender];
-        require(userStake > 0, "No winning stake");
-
         uint256 totalWinningStakes = league.totalStakes;
         (bool success, ) = payable(msg.sender).call{value: totalWinningStakes}(
             ""
         );
         require(success == true, "transfer failed");
-        league.resolved = true;
+        delete leagueTeams[_leagueId][msg.sender];
+        league.gameWeek++;
     }
 
-    function getTotalValue(
+    function getUserPlayers(
         uint256 _leagueId,
         address user
     ) public view returns (uint256) {
-        return leagueTeams[_leagueId][user].totalValue;
+        return leagueTeams[_leagueId][user].playerAddress.length;
     }
 
     function getTopUser(uint256 _leagueId) public view returns (address) {
