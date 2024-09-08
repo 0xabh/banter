@@ -33,7 +33,7 @@ export default function LeaderBoard() {
   }
   async function claimRewards() {
     const contractSign = contract.connect(provider.getSigner());
-    contract.on("RewardClaimed", (user) => {
+    contract.on("RewardsClaimed", (user) => {
       setStatus(true);
       toast.success("Reward Claimed Successfully");
     });
